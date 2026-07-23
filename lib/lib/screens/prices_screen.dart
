@@ -1,0 +1,72 @@
+import 'package:flutter/material.dart';
+import '../models/price_model.dart';
+import '../services/price_service.dart';
+
+class PricesScreen extends StatefulWidget {
+  const PricesScreen({Key? key}) : super(key: key);
+
+  @override
+  State<PricesScreen> createState() => _PricesScreenState();
+}
+
+class _PricesScreenState extends State<PricesScreen> {
+  final PriceService _priceService = PriceService();
+  List<PriceModel> _prices = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Φόρτωση δοκιμαστικών δεδομένων
+    _prices = _priceService.getMockPrices();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Ημερήσιες Τιμές Αγοράς'),
+        backgroundColor: Colors.green[700],
+      ),
+      body: _prices.isEmpty
+          ? const Center(child: Text('Δεν βρέθηκαν τιμές.'))
+          : ListView.builder(
+              itemCount: _prices.length,
+              itemBuilder: (context, index) {
+                final price = _prices[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.green[100],
+                      child: Icon(Icons.shopping_basket, color: Colors.green[800]),
+                    ),
+                    title: Text(
+                      price.productName,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text('${price.marketSource} • ${price.category}'),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${price.avgPrice.toStringAsFixed(2)} ${price.unit}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.green[800],
+                          ),
+                        ),
+                        Text(
+                          '${price.minPrice.toStringAsFixed(2)} - ${price.maxPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
