@@ -1,1 +1,51 @@
-.
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/price_model.dart';
+
+class PriceService {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  // Φέρνει τις τιμές από το Firestore σε πραγματικό χρόνο
+  Stream<List<PriceModel>> getDailyPrices() {
+    return _db.collection('daily_prices').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return PriceModel.fromMap(doc.id, doc.data());
+      }).toList();
+    });
+  }
+
+  // Δοκιμαστικά δεδομένα (Mock Data) για να βλέπουμε την εφαρμογή πριν συνδέσουμε τη βάση
+  List<PriceModel> getMockPrices() {
+    return [
+      PriceModel(
+        id: '1',
+        productName: 'Ντομάτες (A ποιότητας)',
+        category: 'Κηπευτικά',
+        minPrice: 0.70,
+        maxPrice: 0.90,
+        avgPrice: 0.80,
+        unit: '€/κιλό',
+        marketSource: 'ΟΚΑΑ (Ρέντης)',
+      ),
+      PriceModel(
+        id: '2',
+        productName: 'Πατάτες Νέας Σοδειάς',
+        category: 'Κηπευτικά',
+        minPrice: 0.45,
+        maxPrice: 0.55,
+        avgPrice: 0.50,
+        unit: '€/κιλό',
+        marketSource: 'ΚΑΘ (Θεσσαλονίκη)',
+      ),
+      PriceModel(
+        id: '3',
+        productName: 'Πορτοκάλια Μέρλιν',
+        category: 'Φρούτα',
+        minPrice: 0.35,
+        maxPrice: 0.45,
+        avgPrice: 0.40,
+        unit: '€/κιλό',
+        marketSource: 'ΟΚΑΑ (Ρέντης)',
+      ),
+    ];
+  }
+}
