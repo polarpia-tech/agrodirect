@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/crops_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() {
   runApp(const AgroDirectApp());
@@ -17,7 +17,7 @@ class AgroDirectApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
-      home: const CropsScreen(),
+      home: const HomeScreen(),
     );
   }
 }
