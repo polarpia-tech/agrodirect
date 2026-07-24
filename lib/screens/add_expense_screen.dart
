@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/expense_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final String cropId;
@@ -16,6 +16,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   String _title = '';
   double _amount = 0.0;
   String _selectedCategory = 'Λιπάσματα';
+  bool _isLoading = false;
 
   final List<String> _categories = [
     'Λιπάσματα',
@@ -27,20 +28,51 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     'Άλλο',
   ];
 
-  void _saveForm() {
+  void _saveForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      final newExpense = ExpenseModel(
-        id: DateTime.now().toString(),
-        cropId: widget.cropId,
-        title: _title,
-        amount: _amount,
-        date: DateTime.now(),
-        category: _selectedCategory,
-      );
+      setState(() {
+        _isLoading = true;
+      });
 
-      Navigator.of(context).pop(newExpense);
+      try {
+        await FirebaseFirestore.instance
+            .collection('crops')
+            .doc(widget.cropId)
+            .collection('expenses')
+            .add({
+          'title': _title,
+          'amount': _amount,
+          'category': _selectedCategory,
+          'date': Timestamp.now(),
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Το έξοδο αποθηκεύτηκε στο Firebase!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Σφάλμα αποθήκευσης: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
@@ -50,6 +82,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       appBar: AppBar(
         title: const Text('Καταγραφή Νέου Εξόδου'),
         backgroundColor: Colors.red[800],
+        foregroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -108,15 +141,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 onSaved: (value) => _amount = double.parse(value!),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _saveForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[800],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: const Text('Αποθήκευση Εξόδου', style: TextStyle(fontSize: 16)),
-              ),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: _saveForm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[800],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Αποθήκευση Εξόδου στο Σύννεφο',
+                          style: TextStyle(fontSize: 16)),
+                    ),
             ],
           ),
         ),
