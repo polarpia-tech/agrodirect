@@ -1,0 +1,64 @@
+import 'package:flutter/material.dart';
+import '../models/crop_model.dart';
+import '../services/crop_service.dart';
+
+class CropsScreen extends StatefulWidget {
+  const CropsScreen({Key? key}) : super(key: key);
+
+  @override
+  State<CropsScreen> createState() => _CropsScreenState();
+}
+
+class _CropsScreenState extends State<CropsScreen> {
+  final CropService _cropService = CropService();
+  List<CropModel> _crops = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Φόρτωση δοκιμαστικών καλλιεργειών
+    _crops = _cropService.getMockCrops();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Ψηφιακό Τετράδιο Αγρότη'),
+        backgroundColor: Colors.green[800],
+      ),
+      body: _crops.isEmpty
+          ? const Center(child: Text('Δεν υπάρχουν καταγεγραμμένες καλλιέργειες.'))
+          : ListView.builder(
+              itemCount: _crops.length,
+              itemBuilder: (context, index) {
+                final crop = _crops[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.green[100],
+                      child: Icon(Icons.eco, color: Colors.green[800]),
+                    ),
+                    title: Text(
+                      crop.productName,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      'Έκταση: ${crop.areaInAcre} στρ. • Αναμενόμενη παραγωγή: ${crop.estimatedQuantityTons} τόν.',
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  ),
+                );
+              },
+            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Φόρμα προσθήκης νέας καλλιέργειας
+        },
+        backgroundColor: Colors.green[800],
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
