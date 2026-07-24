@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/crop_model.dart';
-import '../services/crop_service.dart';
 import 'add_crop_screen.dart';
-import 'crop_details_screen.dart';
+import '../models/crop_model.dart';
+import '../services/firestore_service.dart';
 
 class CropsScreen extends StatefulWidget {
   const CropsScreen({Key? key}) : super(key: key);
@@ -12,77 +11,78 @@ class CropsScreen extends StatefulWidget {
 }
 
 class _CropsScreenState extends State<CropsScreen> {
-  final CropService _cropService = CropService();
-  List<CropModel> _crops = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _crops = _cropService.getMockCrops();
-  }
-
-  void _navigateToAddCrop() async {
-    final newCrop = await Navigator.of(context).push<CropModel>(
-      MaterialPageRoute(
-        builder: (context) => const AddCropScreen(),
-      ),
-    );
-
-    if (newCrop != null) {
-      setState(() {
-        _crops.add(newCrop);
-      });
-    }
-  }
-
-  void _navigateToCropDetails(CropModel crop) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => CropDetailsScreen(crop: crop),
-      ),
-    );
-  }
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ψηφιακό Τετράδιο Αγρότη'),
+        title: const Text('Τετράδιο Αγρότη'),
         backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
       ),
-      body: _crops.isEmpty
-          ? const Center(
-              child: Text('Δεν υπάρχουν καταγεγραμμένες καλλιέργειες.'),
-            )
-          : ListView.builder(
-              itemCount: _crops.length,
-              itemBuilder: (context, index) {
-                final crop = _crops[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.green[100],
-                      child: Icon(Icons.eco, color: Colors.green[800]),
-                    ),
-                    title: Text(
-                      crop.productName,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      'Έκταση: ${crop.areaInAcre} στρ. | Αναμενόμενη παραγωγή: ${crop.estimatedQuantityTons} τόν.',
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _navigateToCropDetails(crop),
+      body: StreamBuilder<List<CropModel>>(
+        stream: _firestoreService.getCropsStream(),
+        builder: (context, snapshot) {
+          // Αν φορτώνει
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          // Αν υπάρχει σφάλμα
+          if (snapshot.hasError) {
+            return Center(child: Text('Σφάλμα: ${snapshot.error}'));
+          }
+
+          // Αν η λίστα είναι άδεια
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(
+              child: Text(
+                'Δεν υπάρχουν καλλιέργειες.\nΠροσθέστε την πρώτη σας!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+            );
+          }
+
+          final crops = snapshot.data!;
+
+          // Εμφάνιση λίστας
+          return ListView.builder(
+            itemCount: crops.length,
+            itemBuilder: (context, index) {
+              final crop = crops[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                elevation: 2,
+                child: ListTile(
+                  leading: const Icon(Icons.eco, color: Colors.green, size: 32),
+                  title: Text(
+                    crop.productName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                );
-              },
-            ),
+                  subtitle: Text(
+                    '${crop.areaInAcre} στρέμματα • ${crop.estimatedQuantityTons} τόνοι\nΚατάσταση: ${crop.status}',
+                  ),
+                  isThreeLine: true,
+                  onTap: () {
+                    // Αργότερα εδώ θα πηγαίνουμε στην οθόνη Εξόδων της καλλιέργειας
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToAddCrop,
         backgroundColor: Colors.green[800],
-        child: const Icon(Icons.add, color: Colors.white),
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add),
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const AddCropScreen()),
+          );
+        },
       ),
     );
   }
