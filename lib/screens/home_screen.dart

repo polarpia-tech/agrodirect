@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'crops_screen.dart';
 import 'prices_screen.dart';
+import 'marketplace_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -12,10 +13,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  // Οι δύο οθόνες της εφαρμογής
+  // Οι τρεις οθόνες της εφαρμογής
   final List<Widget> _screens = const [
     CropsScreen(),
     PricesScreen(),
+    MarketplaceScreen(),
   ];
 
   @override
@@ -27,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
@@ -42,6 +45,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.sell),
             label: 'Τιμές Αγοράς',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.storefront),
+            label: 'Αγορά',
           ),
         ],
       ),
