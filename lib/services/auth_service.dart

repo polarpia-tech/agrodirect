@@ -1,0 +1,46 @@
+import 'package:firebase_auth/firebase_auth.dart';
+
+class AuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Stream για την παρακολούθηση της κατάστασης σύνδεσης
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  // Λήψη τρέχοντος χρήστη
+  User? get currentUser => _auth.currentUser;
+
+  // Εγγραφή νέου χρήστη
+  Future<UserCredential?> signUp({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      return await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Σύνδεση υπάρχοντος χρήστη
+  Future<UserCredential?> signIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      return await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Αποσύνδεση
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
+}
