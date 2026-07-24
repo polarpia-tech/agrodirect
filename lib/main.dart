@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'screens/prices_screen.dart';
+import 'screens/crops_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+void main() {
   runApp(const AgroDirectApp());
 }
 
@@ -17,9 +14,10 @@ class AgroDirectApp extends StatelessWidget {
       title: 'AgroDirect',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.green,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        useMaterial3: true,
       ),
-      home: PricesScreen(),
+      home: const CropsScreen(),
     );
   }
 }
