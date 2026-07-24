@@ -1,0 +1,200 @@
+import 'package:flutter/material.dart';
+import '../models/crop_model.dart';
+import '../models/expense_model.dart';
+import '../services/expense_service.dart';
+import 'add_expense_screen.dart';
+
+class CropDetailsScreen extends StatefulWidget {
+  final CropModel crop;
+
+  const CropDetailsScreen({Key? key, required this.crop}) : super(key: key);
+
+  @override
+  State<CropDetailsScreen> createState() => _CropDetailsScreenState();
+}
+
+class _CropDetailsScreenState extends State<CropDetailsScreen> {
+  final ExpenseService _expenseService = ExpenseService();
+  List<ExpenseModel> _expenses = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Φόρτωση δοκιμαστικών εξόδων για τη συγκεκριμένη καλλιέργεια
+    _expenses = _expenseService
+        .getMockExpenses()
+        .where((exp) => exp.cropId == widget.crop.id)
+        .toList();
+  }
+
+  // Υπολογισμός συνολικού κόστους
+  double get _totalExpenses {
+    return _expenses.fold(0.0, (sum, item) => sum + item.amount);
+  }
+
+  void _navigateToAddExpense() async {
+    final newExpense = await Navigator.of(context).push<ExpenseModel>(
+      MaterialPageRoute(
+        builder: (context) => AddExpenseScreen(cropId: widget.crop.id),
+      ),
+    );
+
+    if (newExpense != null) {
+      setState(() {
+        _expenses.add(newExpense);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.crop.productName),
+        backgroundColor: Colors.green[800],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Κάρτα Στοιχείων Καλλιέργειας
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Στοιχεία Καλλιέργειας',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[900],
+                      ),
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    Text('Έκταση: ${widget.crop.areaInAcre} στρέμματα',
+                        style: const TextStyle(fontSize: 16)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Εκτιμώμενη Παραγωγή: ${widget.crop.estimatedQuantityTons} τόνοι',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    if (widget.crop.notes.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text('Σημειώσεις: ${widget.crop.notes}',
+                          style: const TextStyle(
+                              fontSize: 14, fontStyle: FontStyle.italic)),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Κάρτα Συνολικού Κόστους
+            Card(
+              color: Colors.red[50],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Συνολικό Κόστος:',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '${_totalExpenses.toStringAsFixed(2)} €',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red[800],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Τίτλος Λίστας Εξόδων
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Καταγεγραμμένα Έξοδα',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _navigateToAddExpense,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Νέο Έξοδο'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[800],
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Λίστα Εξόδων
+            _expenses.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20.0),
+                    child: Center(
+                      child: Text('Δεν έχουν καταγραφεί έξοδα ακόμα.'),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _expenses.length,
+                    itemBuilder: (context, index) {
+                      final expense = _expenses[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.red[100],
+                            child: Icon(Icons.money_off,
+                                color: Colors.red[800]),
+                          ),
+                          title: Text(
+                            expense.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            'Κατηγορία: ${expense.category} | ${expense.date.day}/${expense.date.month}/${expense.date.year}',
+                          ),
+                          trailing: Text(
+                            '${expense.amount.toStringAsFixed(2)} €',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.red[800],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}
