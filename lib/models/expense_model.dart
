@@ -1,0 +1,38 @@
+class ExpenseModel {
+  final String id;
+  final String cropId; // Σύνδεση με συγκεκριμένη καλλιέργεια
+  final String title; // π.χ. Αγορά λιπάσματος
+  final double amount; // Ποσό σε €
+  final DateTime date;
+  final String category; // 'Λιπάσματα', 'Καύσιμα', 'Ημερομίσθια', 'Φάρμακα', 'Εξοπλισμός', 'Άλλο'
+
+  ExpenseModel({
+    required this.id,
+    required this.cropId,
+    required this.title,
+    required this.amount,
+    required this.date,
+    required this.category,
+  });
+
+  factory ExpenseModel.fromMap(String id, Map<String, dynamic> map) {
+    return ExpenseModel(
+      id: id,
+      cropId: map['cropId'] ?? '',
+      title: map['title'] ?? '',
+      amount: (map['amount'] ?? 0.0).toDouble(),
+      date: map['date'] != null ? DateTime.parse(map['date']) : DateTime.now(),
+      category: map['category'] ?? 'Άλλο',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'cropId': cropId,
+      'title': title,
+      'amount': amount,
+      'date': date.toIso8601String(),
+      'category': category,
+    };
+  }
+}
