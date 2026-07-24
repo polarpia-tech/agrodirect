@@ -1,0 +1,33 @@
+import '../models/expense_model.dart';
+
+class ExpenseService {
+  // Δοκιμαστικά δεδομένα εξόδων (Mock Data)
+  List<ExpenseModel> getMockExpenses() {
+    return [
+      ExpenseModel(
+        id: '1',
+        cropId: '1', // Σύνδεση με τις Ντομάτες
+        title: 'Αγορά Βιολογικού Λιπάσματος',
+        amount: 250.0,
+        date: DateTime.now().subtract(const Duration(days: 5)),
+        category: 'Λιπάσματα',
+      ),
+      ExpenseModel(
+        id: '2',
+        cropId: '1', // Σύνδεση με τις Ντομάτες
+        title: 'Πετρέλαιο Τρακτέρ',
+        amount: 120.0,
+        date: DateTime.now().subtract(const Duration(days: 2)),
+        category: 'Καύσιμα',
+      ),
+      ExpenseModel(
+        id: '3',
+        cropId: '2', // Σύνδεση με τις Ελιές
+        title: 'Γεωπονική Επίσκεψη & Συμβουλή',
+        amount: 100.0,
+        date: DateTime.now().subtract(const Duration(days: 10)),
+        category: 'Γεωπόνος',
+      ),
+    ];
+  }
+}
