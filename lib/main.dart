@@ -17,8 +17,9 @@ class AgroDirectApp extends StatelessWidget {
       title: 'AgroDirect',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        primarySwatch: Colors.green,
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xF2F5F3),
       ),
       home: const HomeScreen(),
     );
