@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/crop_model.dart';
-import '../services/crop_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({Key? key}) : super(key: key);
@@ -10,27 +9,19 @@ class MarketplaceScreen extends StatefulWidget {
 }
 
 class _MarketplaceScreenState extends State<MarketplaceScreen> {
-  final CropService _cropService = CropService();
-  List<CropModel> _availableCrops = [];
+  void _showContactDialog(Map<String, dynamic> cropData) {
+    final productName = cropData['productName'] ?? 'Προϊόν';
+    final quantity = cropData['estimatedQuantityTons'] ?? 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _availableCrops = _cropService.getMockCrops();
-  }
-
-  void _showContactDialog(CropModel crop) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Επικοινωνία για ${crop.productName}'),
+        title: Text('Επικοινωνία για $productName'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Διαθέσιμη Ποσότητα: ${crop.estimatedQuantityTons} τόνοι'),
-            const SizedBox(height: 8),
-            Text('Αναμενόμενη Συγκομιδή: ${crop.estimatedHarvestDate.day}/${crop.estimatedHarvestDate.month}/${crop.estimatedHarvestDate.year}'),
+            Text('Διαθέσιμη Ποσότητα: $quantity τόνοι'),
             const SizedBox(height: 16),
             const Text(
               'Θέλετε να στείλετε αίτημα ενδιαφέροντος στον παραγωγό;',
@@ -70,80 +61,97 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       appBar: AppBar(
         title: const Text('Αγορά & Διαθέσιμες Σοδειές'),
         backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
       ),
-      body: _availableCrops.isEmpty
-          ? const Center(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('crops').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Σφάλμα: ${snapshot.error}'));
+          }
+
+          final docs = snapshot.data?.docs ?? [];
+
+          if (docs.isEmpty) {
+            return const Center(
               child: Text('Δεν υπάρχουν διαθέσιμες σοδειές στην αγορά.'),
-            )
-          : ListView.builder(
-              itemCount: _availableCrops.length,
-              itemBuilder: (context, index) {
-                final crop = _availableCrops[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              crop.productName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.green[100],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                'Διαθέσιμο',
-                                style: TextStyle(
-                                  color: Colors.green[800],
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Εκτιμώμενη Παραγωγή: ${crop.estimatedQuantityTons} τόνοι',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        Text(
-                          'Αναμενόμενη Συγκομιδή: ${crop.estimatedHarvestDate.day}/${crop.estimatedHarvestDate.month}/${crop.estimatedHarvestDate.year}',
-                          style: const TextStyle(
-                              fontSize: 14, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _showContactDialog(crop),
-                            icon: const Icon(Icons.storefront),
-                            label: const Text('Εκδήλωση Ενδιαφέροντος'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.green[800],
-                              side: BorderSide(color: Colors.green[800]!),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final data = docs[index].data() as Map<String, dynamic>;
+              final productName = data['productName'] ?? 'Προϊόν';
+              final quantity = data['estimatedQuantityTons'] ?? 0;
+              final area = data['areaInAcre'] ?? 0;
+
+              return Card(
+                margin: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 6),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            productName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green[100],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Διαθέσιμο',
+                              style: TextStyle(
+                                color: Colors.green[800],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Εκτιμώμενη Παραγωγή: $quantity τόνοι ($area στρ.)',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showContactDialog(data),
+                          icon: const Icon(Icons.storefront),
+                          label: const Text('Εκδήλωση Ενδιαφέροντος'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.green[800],
+                            side: BorderSide(color: Colors.green[800]!),
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
