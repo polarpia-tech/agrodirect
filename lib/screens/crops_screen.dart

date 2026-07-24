@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/crop_model.dart';
 import '../services/crop_service.dart';
 import 'add_crop_screen.dart';
+import 'crop_details_screen.dart';
 
 class CropsScreen extends StatefulWidget {
   const CropsScreen({Key? key}) : super(key: key);
@@ -20,7 +21,6 @@ class _CropsScreenState extends State<CropsScreen> {
     _crops = _cropService.getMockCrops();
   }
 
-  // Συνάρτηση για άνοιγμα της φόρμας και λήψη του νέου αντικειμένου
   void _navigateToAddCrop() async {
     final newCrop = await Navigator.of(context).push<CropModel>(
       MaterialPageRoute(
@@ -33,6 +33,14 @@ class _CropsScreenState extends State<CropsScreen> {
         _crops.add(newCrop);
       });
     }
+  }
+
+  void _navigateToCropDetails(CropModel crop) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CropDetailsScreen(crop: crop),
+      ),
+    );
   }
 
   @override
@@ -65,6 +73,8 @@ class _CropsScreenState extends State<CropsScreen> {
                     subtitle: Text(
                       'Έκταση: ${crop.areaInAcre} στρ. | Αναμενόμενη παραγωγή: ${crop.estimatedQuantityTons} τόν.',
                     ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _navigateToCropDetails(crop),
                   ),
                 );
               },
