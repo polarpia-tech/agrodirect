@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'add_crop_screen.dart';
+import 'crop_details_screen.dart';
 import '../models/crop_model.dart';
 import '../services/firestore_service.dart';
 
@@ -24,17 +25,14 @@ class _CropsScreenState extends State<CropsScreen> {
       body: StreamBuilder<List<CropModel>>(
         stream: _firestoreService.getCropsStream(),
         builder: (context, snapshot) {
-          // Αν φορτώνει
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Αν υπάρχει σφάλμα
           if (snapshot.hasError) {
             return Center(child: Text('Σφάλμα: ${snapshot.error}'));
           }
 
-          // Αν η λίστα είναι άδεια
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
               child: Text(
@@ -47,7 +45,6 @@ class _CropsScreenState extends State<CropsScreen> {
 
           final crops = snapshot.data!;
 
-          // Εμφάνιση λίστας
           return ListView.builder(
             itemCount: crops.length,
             itemBuilder: (context, index) {
@@ -65,8 +62,13 @@ class _CropsScreenState extends State<CropsScreen> {
                     '${crop.areaInAcre} στρέμματα • ${crop.estimatedQuantityTons} τόνοι\nΚατάσταση: ${crop.status}',
                   ),
                   isThreeLine: true,
+                  trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    // Αργότερα εδώ θα πηγαίνουμε στην οθόνη Εξόδων της καλλιέργειας
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => CropDetailsScreen(crop: crop),
+                      ),
+                    );
                   },
                 ),
               );
