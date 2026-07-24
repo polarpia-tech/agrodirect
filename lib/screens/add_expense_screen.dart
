@@ -1,0 +1,126 @@
+import 'package:flutter/material.dart';
+import '../models/expense_model.dart';
+
+class AddExpenseScreen extends StatefulWidget {
+  final String cropId;
+
+  const AddExpenseScreen({Key? key, required this.cropId}) : super(key: key);
+
+  @override
+  State<AddExpenseScreen> createState() => _AddExpenseScreenState();
+}
+
+class _AddExpenseScreenState extends State<AddExpenseScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  String _title = '';
+  double _amount = 0.0;
+  String _selectedCategory = 'Λιπάσματα';
+
+  final List<String> _categories = [
+    'Λιπάσματα',
+    'Καύσιμα',
+    'Ημερομίσθια',
+    'Φάρμακα',
+    'Εξοπλισμός',
+    'Γεωπόνος',
+    'Άλλο',
+  ];
+
+  void _saveForm() {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+
+      final newExpense = ExpenseModel(
+        id: DateTime.now().toString(),
+        cropId: widget.cropId,
+        title: _title,
+        amount: _amount,
+        date: DateTime.now(),
+        category: _selectedCategory,
+      );
+
+      Navigator.of(context).pop(newExpense);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Καταγραφή Νέου Εξόδου'),
+        backgroundColor: Colors.red[800],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Κατηγορία Εξόδου',
+                  border: OutlineInputBorder(),
+                ),
+                items: _categories.map((category) {
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedCategory = value;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Περιγραφή / Τίτλος',
+                  hintText: 'π.χ. Αγορά λιπάσματος 20-20-20',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Παρακαλώ εισάγετε περιγραφή';
+                  }
+                  return null;
+                },
+                onSaved: (value) => _title = value!,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Ποσό (€)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || double.tryParse(value) == null) {
+                    return 'Εισάγετε έναν έγκυρο αριθμό';
+                  }
+                  return null;
+                },
+                onSaved: (value) => _amount = double.parse(value!),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _saveForm,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[800],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text('Αποθήκευση Εξόδου', style: TextStyle(fontSize: 16)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
