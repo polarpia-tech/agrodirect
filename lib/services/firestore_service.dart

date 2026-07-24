@@ -1,0 +1,61 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/crop_model.dart';
+
+class FirestoreService {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  // Συλλογή (Collection) στο Firestore
+  final String _cropsCollection = 'crops';
+
+  // 1. Αποθήκευση νέας καλλιέργειας στη βάση
+  Future<void> addCrop(CropModel crop) async {
+    await _db.collection(_cropsCollection).add({
+      'farmerUid': crop.farmerUid,
+      'productName': crop.productName,
+      'areaInAcre': crop.areaInAcre,
+      'estimatedHarvestDate': Timestamp.fromDate(crop.estimatedHarvestDate),
+      'estimatedQuantityTons': crop.estimatedQuantityTons,
+      'status': crop.status,
+      'notes': crop.notes,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // 2. Ανάκτηση όλων των καλλιεργειών σε πραγματικό χρόνο (Stream)
+  Stream<List<CropModel>> getCropsStream() {
+    return _db.collection(_cropsCollection).snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return CropModel(
+          id: doc.id,
+          farmerUid: data['farmerUid'] ?? '',
+          productName: data['productName'] ?? '',
+          areaInAcre: (data['areaInAcre'] ?? 0).toDouble(),
+          estimatedHarvestDate: (data['estimatedHarvestDate'] as Timestamp).toDate(),
+          estimatedQuantityTons: (data['estimatedQuantityTons'] ?? 0).toDouble(),
+          status: data['status'] ?? 'growing',
+          notes: data['notes'] ?? '',
+        );
+      }).toList();
+    });
+  }
+
+  // 3. Προσθήκη εξόδου σε συγκεκριμένη καλλιέργεια
+  Future<void> addExpense({
+    required String cropId,
+    required String title,
+    required double amount,
+    required String category,
+  }) async {
+    await _db
+        .collection(_cropsCollection)
+        .doc(cropId)
+        .collection('expenses')
+        .add({
+      'title': title,
+      'amount': amount,
+      'category': category,
+      'date': FieldValue.serverTimestamp(),
+    });
+  }
+}
