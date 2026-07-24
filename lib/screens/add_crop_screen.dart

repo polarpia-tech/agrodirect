@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/crop_model.dart';
+import '../services/firestore_service.dart';
 
 class AddCropScreen extends StatefulWidget {
   const AddCropScreen({Key? key}) : super(key: key);
@@ -10,30 +11,60 @@ class AddCropScreen extends StatefulWidget {
 
 class _AddCropScreenState extends State<AddCropScreen> {
   final _formKey = GlobalKey<FormState>();
-  
-  String _productName = '';
-  double _areaInAcre = 0.0;
-  double _estimatedQuantityTons = 0.0;
-  String _notes = '';
+  final FirestoreService _firestoreService = FirestoreService();
 
-  void _saveForm() {
+  final TextEditingController _productNameController = TextEditingController();
+  final TextEditingController _areaController = TextEditingController();
+  final TextEditingController _quantityController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
+
+  DateTime _selectedHarvestDate = DateTime.now().add(const Duration(days: 90));
+  bool _isLoading = false;
+
+  void _submitData() async {
     if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      
-      // Δημιουργία νέου αντικειμένου καλλιέργειας
-      final newCrop = CropModel(
-        id: DateTime.now().toString(),
-        farmerUid: 'farmer_101',
-        productName: _productName,
-        areaInAcre: _areaInAcre,
-        estimatedHarvestDate: DateTime.now().add(const Duration(days: 30)),
-        estimatedQuantityTons: _estimatedQuantityTons,
-        status: 'growing',
-        notes: _notes,
-      );
+      setState(() {
+        _isLoading = true;
+      });
 
-      // Επιστροφή στην προηγούμενη οθόνη στέλνοντας τα νέα δεδομένα
-      Navigator.of(context).pop(newCrop);
+      try {
+        final newCrop = CropModel(
+          id: '',
+          farmerUid: 'farmer_123', // Προσωρινό ID παραγωγού
+          productName: _productNameController.text.trim(),
+          areaInAcre: double.parse(_areaController.text),
+          estimatedHarvestDate: _selectedHarvestDate,
+          estimatedQuantityTons: double.parse(_quantityController.text),
+          notes: _notesController.text.trim(),
+        );
+
+        await _firestoreService.addCrop(newCrop);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Η καλλιέργεια αποθηκεύτηκε στο Firebase!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Σφάλμα αποθήκευσης: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
@@ -41,7 +72,7 @@ class _AddCropScreenState extends State<AddCropScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Νέα Καλλιέργεια'),
+        title: const Text('Προσθήκη Καλλιέργειας'),
         backgroundColor: Colors.green[800],
       ),
       body: Padding(
@@ -51,68 +82,58 @@ class _AddCropScreenState extends State<AddCropScreen> {
           child: ListView(
             children: [
               TextFormField(
+                controller: _productNameController,
                 decoration: const InputDecoration(
-                  labelText: 'Όνομα Προϊόντος / Καλλιέργειας',
-                  hintText: 'π.χ. Ντομάτες, Ελιές',
+                  labelText: 'Όνομα Προϊόντος (π.χ. Ντομάτα, Ελιές)',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Παρακαλώ εισάγετε όνομα προϊόντος';
-                  }
-                  return null;
-                },
-                onSaved: (value) => _productName = value!,
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Συμπληρώστε το προϊόν' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
-                decoration: const InputDecoration(
-                  labelText: 'Έκταση (Στρέμματα)',
-                  border: OutlineInputBorder(),
-                ),
+                controller: _areaController,
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || double.tryParse(value) == null) {
-                    return 'Εισάγετε έναν έγκυρο αριθμό';
-                  }
-                  return null;
-                },
-                onSaved: (value) => _areaInAcre = double.parse(value!),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
                 decoration: const InputDecoration(
-                  labelText: 'Εκτιμώμενη Παραγωγή (Τόνοι)',
+                  labelText: 'Έκταση (σε στρέμματα)',
                   border: OutlineInputBorder(),
                 ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || double.tryParse(value) == null) {
-                    return 'Εισάγετε έναν έγκυρο αριθμό';
-                  }
-                  return null;
-                },
-                onSaved: (value) => _estimatedQuantityTons = double.parse(value!),
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Συμπληρώστε την έκταση' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
+                controller: _quantityController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Εκτιμώμενη Ποσότητα (τόνοι)',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Συμπληρώστε την ποσότητα' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _notesController,
                 decoration: const InputDecoration(
                   labelText: 'Σημειώσεις / Παρατηρήσεις',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
-                onSaved: (value) => _notes = value ?? '',
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _saveForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[800],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: const Text('Αποθήκευση Καλλιέργειας', style: TextStyle(fontSize: 16)),
-              ),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: _submitData,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[800],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Text('Αποθήκευση στο Σύννεφο',
+                          style: TextStyle(fontSize: 16)),
+                    ),
             ],
           ),
         ),
