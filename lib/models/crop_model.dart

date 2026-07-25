@@ -1,0 +1,52 @@
+class CropModel {
+  final String? id;
+  final String userId;
+  final String productName;
+  final double areaInAcre;
+  final double estimatedQuantityTons;
+  final bool isPublished;
+  final double totalExpenses;
+  final double totalRevenue;
+  final DateTime createdAt;
+
+  CropModel({
+    this.id,
+    required this.userId,
+    required this.productName,
+    required this.areaInAcre,
+    required this.estimatedQuantityTons,
+    this.isPublished = false,
+    this.totalExpenses = 0.0,
+    this.totalRevenue = 0.0,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'productName': productName,
+      'areaInAcre': areaInAcre,
+      'estimatedQuantityTons': estimatedQuantityTons,
+      'isPublished': isPublished,
+      'totalExpenses': totalExpenses,
+      'totalRevenue': totalRevenue,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  factory CropModel.fromMap(Map<String, dynamic> map, String documentId) {
+    return CropModel(
+      id: documentId,
+      userId: map['userId'] ?? '',
+      productName: map['productName'] ?? '',
+      areaInAcre: (map['areaInAcre'] ?? 0).toDouble(),
+      estimatedQuantityTons: (map['estimatedQuantityTons'] ?? 0).toDouble(),
+      isPublished: map['isPublished'] ?? false,
+      totalExpenses: (map['totalExpenses'] ?? 0).toDouble(),
+      totalRevenue: (map['totalRevenue'] ?? 0).toDouble(),
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'])
+          : DateTime.now(),
+    );
+  }
+}
