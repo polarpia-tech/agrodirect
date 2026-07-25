@@ -3,70 +3,35 @@ import '../models/crop_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final String _cropsCollection = 'crops';
 
-  // 1. Αποθήκευση νέας καλλιέργειας με το πραγματικό farmerUid
+  // Προσθήκη νέας καλλιέργειας
   Future<void> addCrop(CropModel crop) async {
-    await _db.collection(_cropsCollection).add({
-      'farmerUid': crop.farmerUid,
-      'productName': crop.productName,
-      'areaInAcre': crop.areaInAcre,
-      'estimatedHarvestDate': Timestamp.fromDate(crop.estimatedHarvestDate),
-      'estimatedQuantityTons': crop.estimatedQuantityTons,
-      'status': crop.status,
-      'notes': crop.notes,
-      'isPublished': true, // Δημοσιευμένο στην αγορά εξ ορισμού
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    await _db.collection('crops').add(crop.toMap());
   }
 
-  // 2. Ανάκτηση καλλιεργειών ΜΟΝΟ του συγκεκριμένου αγρότη (για το Τετράδιο)
-  Stream<List<CropModel>> getUserCropsStream(String farmerUid) {
+  // Λήψη καλλιεργειών του συνδεδεμένου χρήστη (για το Τετράδιο Αγρότη)
+  Stream<List<CropModel>> getUserCropsStream(String userId) {
     return _db
-        .collection(_cropsCollection)
-        .where('farmerUid', isEqualTo: farmerUid)
+        .collection('crops')
+        .where('userId', isEqualTo: userId)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return CropModel(
-          id: doc.id,
-          farmerUid: data['farmerUid'] ?? '',
-          productName: data['productName'] ?? '',
-          areaInAcre: (data['areaInAcre'] ?? 0).toDouble(),
-          estimatedHarvestDate: (data['estimatedHarvestDate'] as Timestamp).toDate(),
-          estimatedQuantityTons: (data['estimatedQuantityTons'] ?? 0).toDouble(),
-          status: data['status'] ?? 'growing',
-          notes: data['notes'] ?? '',
-        );
-      }).toList();
-    });
+        .map((snapshot) => snapshot.docs
+            .map((doc) => CropModel.fromMap(doc.data(), doc.id))
+            .toList());
   }
 
-  // 3. Ανάκτηση όλων των δημοσιευμένων καλλιεργειών (για την Αγορά)
+  // Λήψη μόνο των δημοσιευμένων καλλιεργειών (για την Αγορά)
   Stream<QuerySnapshot> getMarketplaceCropsStream() {
     return _db
-        .collection(_cropsCollection)
+        .collection('crops')
         .where('isPublished', isEqualTo: true)
         .snapshots();
   }
 
-  // 4. Προσθήκη εξόδου σε συγκεκριμένη καλλιέργεια
-  Future<void> addExpense({
-    required String cropId,
-    required String title,
-    required double amount,
-    required String category,
-  }) async {
-    await _db
-        .collection(_cropsCollection)
-        .doc(cropId)
-        .collection('expenses')
-        .add({
-      'title': title,
-      'amount': amount,
-      'category': category,
-      'date': FieldValue.serverTimestamp(),
+  // Αλλαγή κατάστασης δημοσίευσης (Δημοσίευση / Απόσυρση)
+  Future<void> togglePublishCrop(String cropId, bool isPublished) async {
+    await _db.collection('crops').doc(cropId).update({
+      'isPublished': isPublished,
     });
   }
 }
