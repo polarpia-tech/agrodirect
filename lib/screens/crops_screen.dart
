@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/crop_model.dart';
 import '../services/firestore_service.dart';
+import '../widgets/weather_widget.dart';
 import 'add_crop_screen.dart';
 import 'crop_details_screen.dart';
 
@@ -17,88 +18,91 @@ class _CropsScreenState extends State<CropsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      return const Center(
-        child: Text('Παρακαλώ συνδεθείτε για να δείτε τις καλλιέργειές σας.'),
-      );
-    }
-
     return Scaffold(
-      body: StreamBuilder<List<CropModel>>(
-        stream: _firestoreService.getUserCropsStream(user.uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Column(
+        children: [
+          // Κάρτα Πρόγνωσης Καιρού
+          const WeatherWidget(),
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Σφάλμα: ${snapshot.error}'));
-          }
-
-          final crops = snapshot.data ?? [];
-
-          if (crops.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.eco_outlined, size: 64, color: Colors.green[300]),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Δεν έχετε καταχωρήσει ακόμα καλλιέργειες.',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text('Πατήστε το κουμπί + για προσθήκη.'),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: crops.length,
-            itemBuilder: (context, index) {
-              final crop = crops[index];
-              return Card(
-                elevation: 2,
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+          // Τίτλος Ενότητας
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Οι Καλλιέργειές μου',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(12),
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green[100],
-                    child: Icon(Icons.eco, color: Colors.green[800]),
-                  ),
-                  title: Text(
-                    crop.productName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+              ],
+            ),
+          ),
+
+          // Λίστα Καλλιεργειών
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestoreService.getUserCropsStream(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(child: Text('Σφάλμα: ${snapshot.error}'));
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+
+                if (docs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'Δεν έχετε προσθέσει ακόμη καλλιέργειες.\nΠατήστε το + για να ξεκινήσετε!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
-                  ),
-                  subtitle: Text(
-                    'Έκταση: ${crop.areaInAcre} στρ. | Εκτίμηση: ${crop.estimatedQuantityTons} τόν.',
-                  ),
-                  trailing: Icon(Icons.chevron_right, color: Colors.green[800]),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => CropDetailsScreen(crop: crop),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data() as Map<String, dynamic>;
+                    final crop = CropModel.fromMap(data, docs[index].id);
+
+                    return Card(
+                      elevation: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.green[100],
+                          child: Icon(Icons.eco, color: Colors.green[800]),
+                        ),
+                        title: Text(
+                          crop.productName,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          'Έκταση: ${crop.areaInAcre} στρ. | Εκτίμηση: ${crop.estimatedQuantityTons} τόν.',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => CropDetailsScreen(crop: crop),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },
-                ),
-              );
-            },
-          );
-        },
+                );
+              },
+            ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -107,8 +111,8 @@ class _CropsScreenState extends State<CropsScreen> {
           );
         },
         backgroundColor: Colors.green[800],
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Νέα Καλλιέργεια', style: TextStyle(color: Colors.white)),
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add),
       ),
     );
   }
