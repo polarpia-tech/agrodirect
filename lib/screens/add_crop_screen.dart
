@@ -12,28 +12,25 @@ class AddCropScreen extends StatefulWidget {
 
 class _AddCropScreenState extends State<AddCropScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _productNameController = TextEditingController();
+  final _areaController = TextEditingController();
+  final _quantityController = TextEditingController();
+  
   final FirestoreService _firestoreService = FirestoreService();
-
-  final TextEditingController _productNameController = TextEditingController();
-  final TextEditingController _areaController = TextEditingController();
-  final TextEditingController _quantityController = TextEditingController();
-  final TextEditingController _notesController = TextEditingController();
-
-  DateTime _selectedHarvestDate = DateTime.now().add(const Duration(days: 90));
   bool _isLoading = false;
 
-  void _submitData() async {
+  @override
+  void dispose() {
+    _productNameController.dispose();
+    _areaController.dispose();
+    _quantityController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveCrop() async {
     if (_formKey.currentState!.validate()) {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Δεν βρέθηκε συνδεδεμένος χρήστης!'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+      if (user == null) return;
 
       setState(() {
         _isLoading = true;
@@ -41,33 +38,25 @@ class _AddCropScreenState extends State<AddCropScreen> {
 
       try {
         final newCrop = CropModel(
-          id: '',
-          farmerUid: user.uid, // Αυτόματη σύνδεση με το ID του χρήστη
+          userId: user.uid,
           productName: _productNameController.text.trim(),
-          areaInAcre: double.parse(_areaController.text),
-          estimatedHarvestDate: _selectedHarvestDate,
-          estimatedQuantityTons: double.parse(_quantityController.text),
-          notes: _notesController.text.trim(),
+          areaInAcre: double.parse(_areaController.text.trim()),
+          estimatedQuantityTons: double.parse(_quantityController.text.trim()),
+          isPublished: false,
+          totalExpenses: 0.0,
+          totalRevenue: 0.0,
+          createdAt: DateTime.now(),
         );
 
         await _firestoreService.addCrop(newCrop);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Η καλλιέργεια αποθηκεύτηκε στο λογαριασμό σας!'),
-              backgroundColor: Colors.green,
-            ),
-          );
           Navigator.of(context).pop();
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Σφάλμα αποθήκευσης: $e'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text('Σφάλμα αποθήκευσης: $e')),
           );
         }
       } finally {
@@ -84,7 +73,7 @@ class _AddCropScreenState extends State<AddCropScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Προσθήκη Καλλιέργειας'),
+        title: const Text('Νέα Καλλιέργεια'),
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
       ),
@@ -97,56 +86,64 @@ class _AddCropScreenState extends State<AddCropScreen> {
               TextFormField(
                 controller: _productNameController,
                 decoration: const InputDecoration(
-                  labelText: 'Όνομα Προϊόντος (π.χ. Ντομάτα, Ελιές)',
-                  border: OutlineInputBorder(),
+                  labelText: 'Όνομα Προϊόντος (π.χ. Ελιές, Σιτάρι)',
+                  prefixIcon: Icon(Icons.eco),
                 ),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Συμπληρώστε το προϊόν' : null,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Παρακαλώ εισάγετε όνομα προϊόντος';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _areaController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
-                  labelText: 'Έκταση (σε στρέμματα)',
-                  border: OutlineInputBorder(),
+                  labelText: 'Έκταση (σε Στρέμματα)',
+                  prefixIcon: Icon(Icons.landscape),
                 ),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Συμπληρώστε την έκταση' : null,
+                validator: (value) {
+                  if (value == null || double.tryParse(value) == null) {
+                    return 'Παρακαλώ εισάγετε έγκυρη έκταση';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _quantityController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
-                  labelText: 'Εκτιμώμενη Ποσότητα (τόνοι)',
-                  border: OutlineInputBorder(),
+                  labelText: 'Εκτιμώμενη Παραγωγή (σε Τόνους)',
+                  prefixIcon: Icon(Icons.fitness_center),
                 ),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Συμπληρώστε την ποσότητα' : null,
+                validator: (value) {
+                  if (value == null || double.tryParse(value) == null) {
+                    return 'Παρακαλώ εισάγετε έγκυρη ποσότητα';
+                  }
+                  return null;
+                },
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Σημειώσεις / Παρατηρήσεις',
-                  border: OutlineInputBorder(),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _saveCrop,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[800],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Αποθήκευση Καλλιέργειας',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                 ),
-                maxLines: 3,
               ),
-              const SizedBox(height: 24),
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                      onPressed: _submitData,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[800],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: const Text('Αποθήκευση στο Σύννεφο',
-                          style: TextStyle(fontSize: 16)),
-                    ),
             ],
           ),
         ),
