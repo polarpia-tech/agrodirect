@@ -34,4 +34,63 @@ class FirestoreService {
       'isPublished': isPublished,
     });
   }
+
+  // Προσθήκη Εξόδου
+  Future<void> addExpense({
+    required String cropId,
+    required String title,
+    required double amount,
+    required String category,
+  }) async {
+    await _db.collection('crops').doc(cropId).collection('expenses').add({
+      'title': title,
+      'amount': amount,
+      'category': category,
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+
+    await _db.collection('crops').doc(cropId).update({
+      'totalExpenses': FieldValue.increment(amount),
+    });
+  }
+
+  // Προσθήκη Εσόδου
+  Future<void> addRevenue({
+    required String cropId,
+    required String title,
+    required double amount,
+  }) async {
+    await _db.collection('crops').doc(cropId).collection('revenues').add({
+      'title': title,
+      'amount': amount,
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+
+    await _db.collection('crops').doc(cropId).update({
+      'totalRevenue': FieldValue.increment(amount),
+    });
+  }
+
+  // Προσθήκη Εργασίας (Task)
+  Future<void> addTask({
+    required String cropId,
+    required String title,
+  }) async {
+    await _db.collection('crops').doc(cropId).collection('tasks').add({
+      'title': title,
+      'isCompleted': false,
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  // Αλλαγή κατάστασης ολοκλήρωσης εργασίας
+  Future<void> toggleTaskStatus({
+    required String cropId,
+    required String taskId,
+    required bool currentStatus,
+  }) async {
+    await _db.collection('crops').doc(cropId).collection('tasks').doc(taskId).update({
+      'isCompleted': !currentStatus,
+    });
+  }
 }
