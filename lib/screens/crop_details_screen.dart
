@@ -1,39 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/crop_model.dart';
+import '../services/firestore_service.dart';
 import 'add_expense_screen.dart';
 
-class CropDetailsScreen extends StatelessWidget {
+class CropDetailsScreen extends StatefulWidget {
   final CropModel crop;
 
   const CropDetailsScreen({Key? key, required this.crop}) : super(key: key);
 
   @override
+  State<CropDetailsScreen> createState() => _CropDetailsScreenState();
+}
+
+class _CropDetailsScreenState extends State<CropDetailsScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  late bool _isPublished;
+
+  @override
+  void initState() {
+    super.initState();
+    _isPublished = widget.crop.isPublished;
+  }
+
+  // Χρώματα ανά κατηγορία εξόδου
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Λιπάσματα':
+        return Colors.green;
+      case 'Καύσιμα':
+        return Colors.orange;
+      case 'Ημερομίσθια':
+        return Colors.blue;
+      case 'Φάρμακα':
+        return Colors.purple;
+      case 'Εξοπλισμός':
+        return Colors.teal;
+      case 'Γεωπόνος':
+        return Colors.indigo;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(crop.productName),
+        title: Text(widget.crop.productName),
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('crops')
-            .doc(crop.id)
-            .collection('expenses')
-            .snapshots(),
+        stream: _firestoreService.getCropExpensesStream(widget.crop.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
           final docs = snapshot.data?.docs ?? [];
-          
-          // Υπολογισμός συνολικού κόστους από τη βάση
           double totalExpenses = 0.0;
+          Map<String, double> categoryTotals = {};
+
           for (var doc in docs) {
             final data = doc.data() as Map<String, dynamic>;
-            totalExpenses += (data['amount'] ?? 0.0).toDouble();
+            final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+            final category = (data['category'] as String?) ?? 'Άλλο';
+
+            totalExpenses += amount;
+            categoryTotals[category] = (categoryTotals[category] ?? 0.0) + amount;
           }
 
           return SingleChildScrollView(
@@ -41,9 +76,9 @@ class CropDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Κάρτα Στοιχείων Καλλιέργειας
+                // Κάρτα Βασικών Στοιχείων
                 Card(
-                  elevation: 3,
+                  elevation: 2,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -52,60 +87,46 @@ class CropDetailsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Στοιχεία Καλλιέργειας',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green[900],
-                          ),
-                        ),
-                        const Divider(),
-                        const SizedBox(height: 8),
-                        Text('Έκταση: ${crop.areaInAcre} στρέμματα',
-                            style: const TextStyle(fontSize: 16)),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Εκτιμώμενη Παραγωγή: ${crop.estimatedQuantityTons} τόνοι',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        if (crop.notes.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text('Σημειώσεις: ${crop.notes}',
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              widget.crop.productName,
                               style: const TextStyle(
-                                  fontSize: 14, fontStyle: FontStyle.italic)),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Κάρτα Συνολικού Κόστους
-                Card(
-                  color: Colors.red[50],
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Συνολικό Κόστος:',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Switch(
+                              value: _isPublished,
+                              activeColor: Colors.green[800],
+                              onChanged: (value) async {
+                                setState(() {
+                                  _isPublished = value;
+                                });
+                                await _firestoreService.toggleCropPublishStatus(
+                                  widget.crop.id,
+                                  value,
+                                );
+                              },
+                            ),
+                          ],
                         ),
                         Text(
-                          '${totalExpenses.toStringAsFixed(2)} €',
+                          _isPublished ? 'Δημοσιευμένο στην Αγορά' : 'Ιδιωτικό (Τετράδιο)',
                           style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red[800],
+                            color: _isPublished ? Colors.green[800] : Colors.grey[600],
+                            fontWeight: FontWeight.w600,
                           ),
+                        ),
+                        const Divider(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildInfoTile('Έκταση', '${widget.crop.areaInAcre} στρ.'),
+                            _buildInfoTile('Εκτίμηση', '${widget.crop.estimatedQuantityTons} τόν.'),
+                            _buildInfoTile('Συνολικό Κόστος', '${totalExpenses.toStringAsFixed(2)} €'),
+                          ],
                         ),
                       ],
                     ),
@@ -113,77 +134,149 @@ class CropDetailsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // Τίτλος & Κουμπί Προσθήκης
+                // Αναλυτική Οπτικοποίηση Εξόδων (Visual Breakdown)
+                if (categoryTotals.isNotEmpty) ...[
+                  const Text(
+                    'Αναλυμός Εξόδων ανά Κατηγορία',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: categoryTotals.entries.map((entry) {
+                          final category = entry.key;
+                          final amount = entry.value;
+                          final percentage = totalExpenses > 0 ? (amount / totalExpenses) : 0.0;
+                          final color = _getCategoryColor(category);
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      category,
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      '${amount.toStringAsFixed(2)} € (${(percentage * 100).toStringAsFixed(1)}%)',
+                                      style: TextStyle(color: Colors.grey[700]),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: percentage,
+                                    minHeight: 8,
+                                    backgroundColor: Colors.grey[200],
+                                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+
+                // Λίστα Καταγεγραμμένων Εξόδων
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Καταγεγραμμένα Έξοδα',
+                      'Ιστορικό Εξόδων',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     ElevatedButton.icon(
                       onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => AddExpenseScreen(cropId: crop.id),
+                            builder: (context) => AddExpenseScreen(cropId: widget.crop.id),
                           ),
                         );
                       },
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('Νέο Έξοδο'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[800],
+                        backgroundColor: Colors.green[800],
                         foregroundColor: Colors.white,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
-                // Λίστα Εξόδων
-                docs.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20.0),
-                        child: Center(
-                          child: Text('Δεν έχουν καταγραφεί έξοδα ακόμα.'),
-                        ),
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          final data = docs[index].data() as Map<String, dynamic>;
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: Colors.red[100],
-                                child: Icon(Icons.money_off,
-                                    color: Colors.red[800]),
-                              ),
-                              title: Text(
-                                data['title'] ?? 'Χωρίς τίτλο',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Text('Κατηγορία: ${data['category'] ?? "Άλλο"}'),
-                              trailing: Text(
-                                '${(data['amount'] ?? 0.0).toDouble().toStringAsFixed(2)} €',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Colors.red[800],
-                                ),
-                              ),
+                if (docs.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24.0),
+                    child: Center(
+                      child: Text('Δεν έχουν καταγραφεί έξοδα για αυτή την καλλιέργεια.'),
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final data = docs[index].data() as Map<String, dynamic>;
+                      final title = data['title'] ?? 'Έξοδο';
+                      final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+                      final category = data['category'] ?? 'Άλλο';
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: _getCategoryColor(category).withOpacity(0.2),
+                            child: Icon(
+                              Icons.receipt_long,
+                              color: _getCategoryColor(category),
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text('Κατηγορία: $category'),
+                          trailing: Text(
+                            '-${amount.toStringAsFixed(2)} €',
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
               ],
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildInfoTile(String title, String value) {
+    return Column(
+      children: [
+        Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      ],
     );
   }
 }
