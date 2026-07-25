@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/crop_model.dart';
 import '../services/firestore_service.dart';
 
@@ -23,6 +24,17 @@ class _AddCropScreenState extends State<AddCropScreen> {
 
   void _submitData() async {
     if (_formKey.currentState!.validate()) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Δεν βρέθηκε συνδεδεμένος χρήστης!'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       setState(() {
         _isLoading = true;
       });
@@ -30,7 +42,7 @@ class _AddCropScreenState extends State<AddCropScreen> {
       try {
         final newCrop = CropModel(
           id: '',
-          farmerUid: 'farmer_123', // Προσωρινό ID παραγωγού
+          farmerUid: user.uid, // Αυτόματη σύνδεση με το ID του χρήστη
           productName: _productNameController.text.trim(),
           areaInAcre: double.parse(_areaController.text),
           estimatedHarvestDate: _selectedHarvestDate,
@@ -43,7 +55,7 @@ class _AddCropScreenState extends State<AddCropScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Η καλλιέργεια αποθηκεύτηκε στο Firebase!'),
+              content: Text('Η καλλιέργεια αποθηκεύτηκε στο λογαριασμό σας!'),
               backgroundColor: Colors.green,
             ),
           );
@@ -74,6 +86,7 @@ class _AddCropScreenState extends State<AddCropScreen> {
       appBar: AppBar(
         title: const Text('Προσθήκη Καλλιέργειας'),
         backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
