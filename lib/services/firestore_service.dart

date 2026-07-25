@@ -3,11 +3,9 @@ import '../models/crop_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-
-  // Συλλογή (Collection) στο Firestore
   final String _cropsCollection = 'crops';
 
-  // 1. Αποθήκευση νέας καλλιέργειας στη βάση
+  // 1. Αποθήκευση νέας καλλιέργειας με το πραγματικό farmerUid
   Future<void> addCrop(CropModel crop) async {
     await _db.collection(_cropsCollection).add({
       'farmerUid': crop.farmerUid,
@@ -17,13 +15,18 @@ class FirestoreService {
       'estimatedQuantityTons': crop.estimatedQuantityTons,
       'status': crop.status,
       'notes': crop.notes,
+      'isPublished': true, // Δημοσιευμένο στην αγορά εξ ορισμού
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
 
-  // 2. Ανάκτηση όλων των καλλιεργειών σε πραγματικό χρόνο (Stream)
-  Stream<List<CropModel>> getCropsStream() {
-    return _db.collection(_cropsCollection).snapshots().map((snapshot) {
+  // 2. Ανάκτηση καλλιεργειών ΜΟΝΟ του συγκεκριμένου αγρότη (για το Τετράδιο)
+  Stream<List<CropModel>> getUserCropsStream(String farmerUid) {
+    return _db
+        .collection(_cropsCollection)
+        .where('farmerUid', isEqualTo: farmerUid)
+        .snapshots()
+        .map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         return CropModel(
@@ -40,7 +43,15 @@ class FirestoreService {
     });
   }
 
-  // 3. Προσθήκη εξόδου σε συγκεκριμένη καλλιέργεια
+  // 3. Ανάκτηση όλων των δημοσιευμένων καλλιεργειών (για την Αγορά)
+  Stream<QuerySnapshot> getMarketplaceCropsStream() {
+    return _db
+        .collection(_cropsCollection)
+        .where('isPublished', isEqualTo: true)
+        .snapshots();
+  }
+
+  // 4. Προσθήκη εξόδου σε συγκεκριμένη καλλιέργεια
   Future<void> addExpense({
     required String cropId,
     required String title,
